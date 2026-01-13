@@ -1,29 +1,26 @@
 import postgres from 'postgres'
 
-// Creamos la conexión usando los datos del archivo .env
+// Configuración usando las variables de entorno
 const sql = postgres({
   host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT),
   database: process.env.DB_NAME,
   username: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  ssl: false // Si en DBeaver no usaste SSL, aquí tampoco
+  ssl: false // Prueba con 'require' si falla, pero si DBeaver va sin SSL, aquí también
 })
 
 export default defineEventHandler(async (event) => {
   try {
-    // Hacemos la consulta SQL a la tabla real
-    // IMPORTANTE: Verifica en DBeaver si la tabla se llama 'users' o 'usuarios'
-    const users = await sql`
-      SELECT id, name, email, role, created_at 
-      FROM users
-    `
-    return users
+    // Consulta SQL simple para traer todos los usuarios
+    // Asegúrate de que la tabla se llama 'usuarios' o como la veas en DBeaver
+    const usuarios = await sql`SELECT * FROM usuarios` 
+    return usuarios
   } catch (error) {
-    console.error('Error FATAL conectando a la BD:', error)
+    console.error('Error conectando a BD:', error)
     throw createError({
       statusCode: 500,
-      statusMessage: 'Error de conexión con la Base de Datos'
+      statusMessage: 'Error de conexión a Base de Datos'
     })
   }
 })
