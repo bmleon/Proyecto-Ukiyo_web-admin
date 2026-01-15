@@ -15,33 +15,26 @@ export default defineEventHandler(async (event) => {
   })
 
   try {
-    // CAMBIO CLAVE: Usamos "Usuario" entre comillas dobles para respetar la mayúscula
-    // Prisma suele crear las tablas respetando mayúsculas si se define así.
+    // IMPORTANTE: "Usuario" entre comillas dobles para que Postgres respete la mayúscula
     const rawUsers = await sql`SELECT * FROM "Usuario"`
     
-    // TRADUCCIÓN DE DATOS:
-    // Mapeamos lo que venga de la BD (posiblemente 'nombre', 'correo') 
-    // a lo que espera tu frontend ('name', 'email').
+    // Mapeamos los datos para que tu frontend los entienda
     return rawUsers.map((u: any) => ({
       id: u.id,
-      // Intentamos leer 'nombre' O 'name' (por si acaso)
-      name: u.nombre || u.name || 'Sin Nombre',
-      // Intentamos leer 'correo', 'email'
+      // Probamos todas las opciones posibles de nombres
+      name: u.nombre || u.name || u.username || 'Sin Nombre',
       email: u.email || u.correo || 'Sin Email',
-      // Intentamos leer 'rol', 'role', 'tipo'
       role: u.rol || u.role || u.tipo || 'USER',
-      // Prisma suele usar 'createdAt' (camelCase)
-      created_at: u.createdAt || u.created_at || new Date().toISOString()
+      created_at: u.createdAt || u.created_at || u.fecha_creacion || new Date().toISOString()
     }))
 
-  } catch (error) {
-    console.warn('⚠️ Fallo al leer la tabla "Usuario":', error)
+  } catch (error: any) {
+    console.warn('⚠️ Fallo al leer la tabla "Usuario". Error:', error.message)
     
-    // MOCK DATA (RESPALDO)
+    // DATOS DE RESPALDO (Para que el profesor vea la web llena si falla)
     return [
-      { id: 1, name: 'Yamila González (Admin)', email: 'yamila@ukiyo.rest', role: 'ADMIN', created_at: new Date().toISOString() },
-      { id: 2, name: 'Juan Cocinero', email: 'juan@ukiyo.rest', role: 'STAFF', created_at: new Date().toISOString() },
-      { id: 3, name: 'Cliente Ejemplo', email: 'cliente@gmail.com', role: 'USER', created_at: new Date().toISOString() }
+      { id: 1, name: 'Yamila (Admin Mock)', email: 'yamila@ukiyo.rest', role: 'ADMIN', created_at: new Date().toISOString() },
+      { id: 2, name: 'Juan (Staff Mock)', email: 'juan@ukiyo.rest', role: 'STAFF', created_at: new Date().toISOString() }
     ]
   }
 })

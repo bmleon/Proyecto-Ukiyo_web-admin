@@ -11,37 +11,38 @@ export default defineEventHandler(async (event) => {
     username: config.dbUser,
     password: config.dbPassword,
     ssl: false,
-    connect_timeout: 2
+    connect_timeout: 3
   })
 
   try {
-    // 1. Preguntar qué tablas existen en el esquema público
+    // 1. Listar tablas
     const tables = await sql`
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_schema = 'public'
     `
 
-    // 2. Intentar sacar una fila de ejemplo de la tabla 'users' (si existe)
-    let sampleData = 'La tabla users no existe'
+    // 2. Intentar leer la tabla "Usuario" (con comillas por si acaso)
+    let pruebaUsuario = 'No se pudo leer'
     try {
-        // Intentamos leer la primera fila para ver los nombres de las columnas
-        const data = await sql`SELECT * FROM users LIMIT 1`
-        sampleData = data
-    } catch (e: any) { // <--- CORRECCIÓN AQUÍ: Añadido : any
-        sampleData = 'Error al leer users: ' + e.message
+        // OJO: Usamos comillas dobles para respetar la mayúscula
+        const data = await sql`SELECT * FROM "Usuario" LIMIT 1`
+        pruebaUsuario = data as any
+    } catch (e: any) {
+        pruebaUsuario = 'Error leyendo "Usuario": ' + e.message
     }
 
     return { 
-      estado_conexion: '✅ CONECTADO',
-      tablas_encontradas: tables,
-      prueba_tabla_users: sampleData
+      estado: 'CONECTADO ✅',
+      tablas: tables,
+      datos_usuario: pruebaUsuario
     }
 
-  } catch (error: any) { // <--- CORRECCIÓN AQUÍ: Añadido : any
+  } catch (error: any) {
     return { 
-      estado_conexion: '❌ ERROR',
-      detalle: error.message 
+      estado: 'ERROR DE CONEXIÓN ❌',
+      error: error.message,
+      stack: error.stack
     }
   }
 })
