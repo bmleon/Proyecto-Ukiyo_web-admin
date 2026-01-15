@@ -15,38 +15,42 @@ export default defineEventHandler(async (event) => {
   })
 
   try {
-    // CORRECCIÓN: Pedimos 'roles' (plural) en lugar de 'rol'
+    // Consulta SQL a la tabla "Usuario"
     const rawUsers = await sql`
       SELECT id, username, email, roles, "createdAt" 
       FROM "Usuario"
     `
     
     return rawUsers.map((u: any) => {
-      // Lógica para sacar el rol principal del array
-      // Si roles es ["ADMIN", "USER"], nos quedamos con "ADMIN"
       let mainRole = 'USER';
       if (Array.isArray(u.roles) && u.roles.length > 0) {
         mainRole = u.roles[0]; 
       } else if (typeof u.roles === 'string') {
-        mainRole = u.roles; // Por si acaso viene como string
+        mainRole = u.roles;
       }
 
       return {
         id: u.id,
         name: u.username,
         email: u.email,
-        role: mainRole, // Asignamos el rol procesado
+        role: mainRole,
         created_at: u.createdAt || new Date().toISOString()
       }
     })
 
   } catch (error: any) {
-    console.warn('⚠️ Fallo al leer la tabla "Usuario". Error:', error.message)
+    console.error('❌ Error CRÍTICO en Base de Datos:', error)
     
-    // MOCK DATA DE EMERGENCIA
-    return [
-      { id: 'ERR', name: 'Error SQL', email: error.message, role: 'ERROR', created_at: new Date().toISOString() },
-      { id: '1', name: 'Yamila (Demo)', email: 'yamila@ukiyo.rest', role: 'ADMIN', created_at: new Date().toISOString() }
-    ]
+    // AQUÍ ESTÁ EL CAMBIO:
+    // En lugar de devolver datos falsos, lanzamos el error al frontend
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'Error de BD: ' + error.message,
+      // Incluimos el detalle técnico para que puedas leerlo
+      data: {
+        code: error.code,
+        detail: error.message
+      }
+    })
   }
 })
