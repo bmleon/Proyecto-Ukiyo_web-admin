@@ -2,16 +2,13 @@
 export default defineNuxtConfig({
   devtools: { enabled: true },
   
-  // Módulo principal para el diseño (incluye Tailwind por debajo)
   modules: ['@nuxt/ui'],
 
-  // Configuración de la librería UI
   ui: {
-    global: true, // Habilita componentes globales
-    icons: ['heroicons'] // Pack de iconos por defecto
+    global: true
+    // La propiedad 'icons' se ha eliminado porque Heroicons ya viene por defecto
   },
 
-  // Configuración de la cabecera (Título de la pestaña)
   app: {
     head: {
       title: 'Ukiyo Admin Panel',
@@ -22,8 +19,28 @@ export default defineNuxtConfig({
     }
   },
 
-  // Configuración opcional para forzar modo oscuro por defecto en el admin
   colorMode: {
     preference: 'dark'
+  },
+
+  nitro: {
+    externals: {
+      inline: ['postgres']
+    }
+  },
+
+  // --- AÑADE ESTO: Configuración de Variables ---
+  runtimeConfig: {
+    // Estas variables solo están disponibles en el servidor (seguro)
+    dbHost: process.env.DB_HOST,
+    dbPort: process.env.DB_PORT,
+    dbName: process.env.DB_NAME,
+    dbUser: process.env.DB_USER,
+    dbPassword: process.env.DB_PASSWORD,
+    
+    dbProdPort: process.env.DB_PROD_PORT,
+    dbProdName: process.env.DB_PROD_NAME,
+    dbProdUser: process.env.DB_PROD_USER,
+    dbProdPassword: process.env.DB_PROD_PASSWORD
   }
 })
