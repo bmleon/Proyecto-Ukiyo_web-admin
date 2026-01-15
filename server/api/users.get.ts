@@ -15,47 +15,38 @@ export default defineEventHandler(async (event) => {
   })
 
   try {
-    // PASO 1: DETECTIVE DE TABLAS
-    // Buscamos cuál es el nombre real de la tabla de usuarios en la BD
-    const tables = await sql`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public' 
-      AND (table_name ILIKE 'user%' OR table_name ILIKE 'usu%' OR table_name ILIKE 'User%')
-    `
-
-    // Si no encuentra ninguna tabla parecida, lanzamos error controlado
-    if (tables.length === 0) throw new Error('No se encontró ninguna tabla de usuarios (ni Usuario, ni users, ni User)')
-
-    // Nos quedamos con la primera que encuentre (ej: "Usuario")
-    const realTableName = tables[0].table_name
-
-    // PASO 2: CONSULTA DINÁMICA
-    // Usamos sql.unsafe() porque el nombre de la tabla es variable. Es seguro aquí porque lo acabamos de leer de la propia BD.
-    // Traemos TODAS las columnas (*) para no fallar si falta alguna.
-    const rawUsers = await sql.unsafe(`SELECT * FROM "${realTableName}" LIMIT 100`)
-    
-    // PASO 3: MAPEO INTELIGENTE
-    // Convertimos lo que llegue a lo que necesita tu web
-    return rawUsers.map((u: any) => ({
-      id: u.id,
-      // Buscamos cualquier campo que parezca un nombre
-      name: u.username || u.nombre || u.name || u.firstName || 'Sin Nombre',
-      // Buscamos el email
-      email: u.email || u.correo || u.mail || 'Sin Email',
-      // Buscamos el rol
-      role: u.rol || u.role || u.tipo || 'USER',
-      // Buscamos la fecha
-      created_at: u.createdAt || u.created_at || u.fecha_creacion || new Date().toISOString()
-    }))
+    // INTENTO 1: Usando la definición exacta de tu TypeORM ("Usuario")
+    // Seleccionamos 'username' y lo renombramos a 'name' para que el frontend lo entienda
+    try {
+      const users = await sql`
+        SELECT id, username as name, email, rol as role, "createdAt" as created_at 
+        FROM "Usuario"
+      `
+      return users
+    } catch (e) {
+      console.log('Intento 1 ("Usuario") falló, probando minúsculas...')
+      
+      // INTENTO 2: Probamos en minúsculas por si acaso ('usuario')
+      const users = await sql`
+        SELECT id, username as name, email, rol as role, created_at 
+        FROM usuario
+      `
+      return users
+    }
 
   } catch (error: any) {
-    console.warn('⚠️ Error inteligente:', error.message)
+    console.error('❌ Error FATAL leyendo usuarios:', error.message)
     
-    // DATOS DE RESPALDO (Si todo falla, mostramos esto)
+    // Si llegamos aquí, mostramos un error visible en la tabla falsa para que sepas qué pasa
     return [
-      { id: 'MOCK-1', name: 'Yamila (Admin Mock)', email: 'yamila@ukiyo.rest', role: 'ADMIN', created_at: new Date().toISOString() },
-      { id: 'MOCK-2', name: 'Fallo de Conexión', email: 'revisa@logs.com', role: 'ERROR', created_at: new Date().toISOString() }
+      { 
+        id: 'ERR', 
+        name: 'ERROR CONEXIÓN', 
+        email: error.message, // <--- Aquí verás el error real en la web
+        role: 'ERROR', 
+        created_at: new Date().toISOString() 
+      },
+      { id: 1, name: 'Yamila (Demo)', email: 'yamila@ukiyo.rest', role: 'ADMIN', created_at: new Date().toISOString() }
     ]
   }
 })
