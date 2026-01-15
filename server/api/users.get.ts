@@ -15,38 +15,38 @@ export default defineEventHandler(async (event) => {
   })
 
   try {
-    // INTENTO 1: Usando la definición exacta de tu TypeORM ("Usuario")
-    // Seleccionamos 'username' y lo renombramos a 'name' para que el frontend lo entienda
-    try {
-      const users = await sql`
-        SELECT id, username as name, email, rol as role, "createdAt" as created_at 
-        FROM "Usuario"
-      `
-      return users
-    } catch (e) {
-      console.log('Intento 1 ("Usuario") falló, probando minúsculas...')
-      
-      // INTENTO 2: Probamos en minúsculas por si acaso ('usuario')
-      const users = await sql`
-        SELECT id, username as name, email, rol as role, created_at 
-        FROM usuario
-      `
-      return users
-    }
+    // CORRECCIÓN: Pedimos 'roles' (plural) en lugar de 'rol'
+    const rawUsers = await sql`
+      SELECT id, username, email, roles, "createdAt" 
+      FROM "Usuario"
+    `
+    
+    return rawUsers.map((u: any) => {
+      // Lógica para sacar el rol principal del array
+      // Si roles es ["ADMIN", "USER"], nos quedamos con "ADMIN"
+      let mainRole = 'USER';
+      if (Array.isArray(u.roles) && u.roles.length > 0) {
+        mainRole = u.roles[0]; 
+      } else if (typeof u.roles === 'string') {
+        mainRole = u.roles; // Por si acaso viene como string
+      }
+
+      return {
+        id: u.id,
+        name: u.username,
+        email: u.email,
+        role: mainRole, // Asignamos el rol procesado
+        created_at: u.createdAt || new Date().toISOString()
+      }
+    })
 
   } catch (error: any) {
-    console.error('❌ Error FATAL leyendo usuarios:', error.message)
+    console.warn('⚠️ Fallo al leer la tabla "Usuario". Error:', error.message)
     
-    // Si llegamos aquí, mostramos un error visible en la tabla falsa para que sepas qué pasa
+    // MOCK DATA DE EMERGENCIA
     return [
-      { 
-        id: 'ERR', 
-        name: 'ERROR CONEXIÓN', 
-        email: error.message, // <--- Aquí verás el error real en la web
-        role: 'ERROR', 
-        created_at: new Date().toISOString() 
-      },
-      { id: 1, name: 'Yamila (Demo)', email: 'yamila@ukiyo.rest', role: 'ADMIN', created_at: new Date().toISOString() }
+      { id: 'ERR', name: 'Error SQL', email: error.message, role: 'ERROR', created_at: new Date().toISOString() },
+      { id: '1', name: 'Yamila (Demo)', email: 'yamila@ukiyo.rest', role: 'ADMIN', created_at: new Date().toISOString() }
     ]
   }
 })
