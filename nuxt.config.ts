@@ -1,46 +1,15 @@
-// https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  devtools: { enabled: true },
-  
-  modules: ['@nuxt/ui'],
+  // ... resto de config ...
 
-  ui: {
-    global: true
-    // La propiedad 'icons' se ha eliminado porque Heroicons ya viene por defecto
-  },
-
-  app: {
-    head: {
-      title: 'Ukiyo Admin Panel',
-      meta: [
-        { charset: 'utf-8' },
-        { name: 'viewport', content: 'width=device-width, initial-scale=1' }
-      ]
-    }
-  },
-
-  colorMode: {
-    preference: 'dark'
-  },
-
-  nitro: {
-    externals: {
-      inline: ['postgres']
-    }
-  },
-
-  // --- AÑADE ESTO: Configuración de Variables ---
   runtimeConfig: {
-    // Estas variables solo están disponibles en el servidor (seguro)
+    // Variables privadas (solo servidor)
     dbHost: process.env.DB_HOST,
     dbPort: process.env.DB_PORT,
-    dbName: process.env.DB_NAME,
-    dbUser: process.env.DB_USER,
-    dbPassword: process.env.DB_PASSWORD,
-    
-    dbProdPort: process.env.DB_PROD_PORT,
-    dbProdName: process.env.DB_PROD_NAME,
-    dbProdUser: process.env.DB_PROD_USER,
-    dbProdPassword: process.env.DB_PROD_PASSWORD
+    // ... resto de variables de BD ...
+
+    // Variables públicas (disponibles en cliente y servidor)
+    public: {
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:3000'
+    }
   }
 })
