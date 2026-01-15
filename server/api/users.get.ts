@@ -15,30 +15,47 @@ export default defineEventHandler(async (event) => {
   })
 
   try {
-    // 1. Consulta SQL usando el nombre EXACTO de la tabla: "Usuario"
-    // Seleccionamos las columnas que vimos en tu entidad
-    const rawUsers = await sql`
-      SELECT id, username, email, rol, "createdAt" 
-      FROM "Usuario"
+    // PASO 1: DETECTIVE DE TABLAS
+    // Buscamos cuál es el nombre real de la tabla de usuarios en la BD
+    const tables = await sql`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND (table_name ILIKE 'user%' OR table_name ILIKE 'usu%' OR table_name ILIKE 'User%')
     `
+
+    // Si no encuentra ninguna tabla parecida, lanzamos error controlado
+    if (tables.length === 0) throw new Error('No se encontró ninguna tabla de usuarios (ni Usuario, ni users, ni User)')
+
+    // Nos quedamos con la primera que encuentre (ej: "Usuario")
+    const realTableName = tables[0].table_name
+
+    // PASO 2: CONSULTA DINÁMICA
+    // Usamos sql.unsafe() porque el nombre de la tabla es variable. Es seguro aquí porque lo acabamos de leer de la propia BD.
+    // Traemos TODAS las columnas (*) para no fallar si falta alguna.
+    const rawUsers = await sql.unsafe(`SELECT * FROM "${realTableName}" LIMIT 100`)
     
-    // 2. Mapeo de datos para el Frontend
-    // Convertimos lo que viene de la BD a lo que espera tu tabla visual (name, role...)
+    // PASO 3: MAPEO INTELIGENTE
+    // Convertimos lo que llegue a lo que necesita tu web
     return rawUsers.map((u: any) => ({
       id: u.id,
-      name: u.username,       // En tu entidad es 'username', en el frontend 'name'
-      email: u.email,
-      role: u.rol,           // En tu entidad es 'rol', en el frontend 'role'
-      created_at: u.createdAt || u.created_at || new Date().toISOString()
+      // Buscamos cualquier campo que parezca un nombre
+      name: u.username || u.nombre || u.name || u.firstName || 'Sin Nombre',
+      // Buscamos el email
+      email: u.email || u.correo || u.mail || 'Sin Email',
+      // Buscamos el rol
+      role: u.rol || u.role || u.tipo || 'USER',
+      // Buscamos la fecha
+      created_at: u.createdAt || u.created_at || u.fecha_creacion || new Date().toISOString()
     }))
 
   } catch (error: any) {
-    console.warn('⚠️ Fallo al leer la tabla "Usuario". Error:', error.message)
+    console.warn('⚠️ Error inteligente:', error.message)
     
-    // DATOS DE RESPALDO (Si falla la conexión, mostramos esto)
+    // DATOS DE RESPALDO (Si todo falla, mostramos esto)
     return [
-      { id: '1', name: 'Yamila (Admin Mock)', email: 'yamila@ukiyo.rest', role: 'ADMIN', created_at: new Date().toISOString() },
-      { id: '2', name: 'Juan (Staff Mock)', email: 'juan@ukiyo.rest', role: 'STAFF', created_at: new Date().toISOString() }
+      { id: 'MOCK-1', name: 'Yamila (Admin Mock)', email: 'yamila@ukiyo.rest', role: 'ADMIN', created_at: new Date().toISOString() },
+      { id: 'MOCK-2', name: 'Fallo de Conexión', email: 'revisa@logs.com', role: 'ERROR', created_at: new Date().toISOString() }
     ]
   }
 })
