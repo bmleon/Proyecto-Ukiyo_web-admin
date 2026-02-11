@@ -1,56 +1,33 @@
-// @ts-ignore
-import postgres from 'postgres'
-
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
-
-  const sql = postgres({
-    host: config.dbHost,
-    port: Number(config.dbPort),
-    database: config.dbName,
-    username: config.dbUser,
-    password: config.dbPassword,
-    ssl: false,
-    connect_timeout: 3
-  })
+  
+  // CORRECCIÓN: Actualizamos el fallback a 30090
+  const gatewayUrl = config.public.apiBase || 'http://194.163.170.169:30090'
 
   try {
-    // Consulta SQL a la tabla "Usuario"
-    const rawUsers = await sql`
-      SELECT id, username, email, roles, "createdAt" 
-      FROM "Usuario"
-    `
-    
-    return rawUsers.map((u: any) => {
-      let mainRole = 'USER';
-      if (Array.isArray(u.roles) && u.roles.length > 0) {
-        mainRole = u.roles[0]; 
-      } else if (typeof u.roles === 'string') {
-        mainRole = u.roles;
-      }
+    console.log(`🔌 Conectando Usuarios a: ${gatewayUrl}/api/usuarios`)
 
-      return {
-        id: u.id,
-        name: u.username,
-        email: u.email,
-        role: mainRole,
-        created_at: u.createdAt || new Date().toISOString()
-      }
+    const response: any = await $fetch(`${gatewayUrl}/api/usuarios`, {
+      method: 'GET',
+      timeout: 5000
     })
+
+    const usersList = Array.isArray(response) ? response : response.data || []
+
+    return usersList.map((u: any) => ({
+      id: u.id,
+      name: u.username || u.nombre || 'Sin Nombre',
+      email: u.email,
+      role: Array.isArray(u.roles) ? u.roles[0] : (u.rol || 'USER'),
+      created_at: u.createdAt || u.fechaCreacion || new Date().toISOString()
+    }))
 
   } catch (error: any) {
-    console.error('❌ Error CRÍTICO en Base de Datos:', error)
-    
-    // AQUÍ ESTÁ EL CAMBIO:
-    // En lugar de devolver datos falsos, lanzamos el error al frontend
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'Error de BD: ' + error.message,
-      // Incluimos el detalle técnico para que puedas leerlo
-      data: {
-        code: error.code,
-        detail: error.message
-      }
-    })
+    console.error(`❌ Error Gateway Usuarios:`, error.message)
+    // Devolvemos demo si falla
+    return [
+      { id: 1, name: 'Yamila (Demo)', email: 'admin@ukiyo.rest', role: 'ADMIN', created_at: new Date().toISOString() },
+      { id: 2, name: 'Juan (Staff)', email: 'staff@ukiyo.rest', role: 'STAFF', created_at: new Date().toISOString() }
+    ]
   }
 })

@@ -2,18 +2,17 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 
-const router = useRouter();
+const router = useRouter(); // En Nuxt automático, a veces ayuda importar explícitamente si falla navigateTo
 const isSaving = ref(false);
 const showSuccess = ref(false);
 const errorMessage = ref('');
 
-// Modelo del nuevo plato
+// Modelo del nuevo plato (SIN IMAGEN)
 const newDish = ref({
   name: '',
   description: '',
   price: undefined as number | undefined,
-  category: 'Sushi',
-  image: ''
+  category: 'Sushi'
 });
 
 const categories = ['Sushi', 'Nigiri', 'Calientes', 'Postres', 'Bebidas'];
@@ -24,30 +23,30 @@ const saveDish = async () => {
   showSuccess.value = false;
 
   try {
-    // Enviamos los datos a nuestro servidor interno (que luego hablará con el Gateway)
+    // Enviamos los datos a nuestro servidor interno
     await $fetch('/api/products', {
       method: 'POST',
       body: {
-        nombre: newDish.value.name,       // Adaptamos nombres al español si el backend lo requiere
-        descripcion: newDish.value.description,
-        precio: newDish.value.price,
-        categoria: newDish.value.category,
-        imagen: newDish.value.image,
-        activo: true
+        name: newDish.value.name,
+        description: newDish.value.description,
+        price: newDish.value.price,
+        category: newDish.value.category,
+        // No enviamos imagen desde el formulario
+        active: true
       }
     });
 
-    // ÉXITO
+    // Si todo va bien:
     showSuccess.value = true;
     
-    // Redirigir al menú tras 1.5 segundos
-    setTimeout(() => {
-       router.push('/menu'); 
+    // Redirigir a la lista de platos
+    setTimeout(async () => {
+       await navigateTo('/menu'); 
     }, 1500);
 
   } catch (error: any) {
     console.error('Error al guardar:', error);
-    errorMessage.value = 'Error al guardar el plato: ' + (error.statusMessage || error.message);
+    errorMessage.value = 'Error al guardar: ' + (error.statusMessage || error.message || 'Error desconocido');
   } finally {
     isSaving.value = false;
   }
@@ -62,15 +61,15 @@ const saveDish = async () => {
       <UButton icon="i-heroicons-arrow-left" color="gray" variant="ghost" to="/menu" />
       <div>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Añadir Nuevo Producto</h1>
-        <p class="text-gray-500 text-sm">Rellena los datos para añadir un plato a la carta.</p>
+        <p class="text-gray-500 text-sm">Introduce los datos del plato.</p>
       </div>
     </div>
 
-    <!-- Mensajes de Estado -->
+    <!-- Alertas -->
     <UAlert 
       v-if="showSuccess" 
-      title="¡Producto Creado!" 
-      description="El plato se ha enviado correctamente."
+      title="¡Guardado!" 
+      description="El plato se ha registrado correctamente."
       color="green" 
       variant="soft" 
       icon="i-heroicons-check-circle"
@@ -87,17 +86,15 @@ const saveDish = async () => {
       class="mb-6"
     />
 
-    <!-- Formulario -->
+    <!-- Formulario (Limpio) -->
     <UCard>
       <form @submit.prevent="saveDish" class="space-y-6">
         
-        <!-- Nombre -->
         <UFormGroup label="Nombre del Plato" required>
-          <UInput v-model="newDish.name" placeholder="Ej: Dragon Roll Imperial" />
+          <UInput v-model="newDish.name" placeholder="Ej: Dragon Roll" autofocus />
         </UFormGroup>
 
-        <!-- Categoría y Precio -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <UFormGroup label="Categoría" required>
             <USelect 
               v-model="newDish.category" 
@@ -117,32 +114,19 @@ const saveDish = async () => {
           </UFormGroup>
         </div>
 
-        <!-- Descripción -->
         <UFormGroup label="Descripción">
           <UTextarea 
             v-model="newDish.description" 
-            placeholder="Ingredientes, alérgenos, detalles..." 
-            :rows="4"
+            placeholder="Ingredientes..." 
+            :rows="3"
           />
         </UFormGroup>
 
-        <!-- Imagen URL -->
-        <UFormGroup label="URL de la Imagen" help="Enlace directo a la foto">
-          <div class="flex gap-4 items-start">
-            <div class="flex-1">
-              <UInput v-model="newDish.image" placeholder="https://..." icon="i-heroicons-photo" />
-            </div>
-            <!-- Preview pequeña -->
-            <div v-if="newDish.image" class="w-16 h-16 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 flex-shrink-0">
-              <img :src="newDish.image" alt="Preview" class="w-full h-full object-cover" @error="newDish.image = ''" />
-            </div>
-          </div>
-        </UFormGroup>
-
-        <!-- Botones -->
         <div class="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
           <UButton color="gray" variant="ghost" to="/menu">Cancelar</UButton>
-          <UButton type="submit" color="primary" :loading="isSaving">Guardar Plato</UButton>
+          <UButton type="submit" color="primary" :loading="isSaving" icon="i-heroicons-check">
+            Guardar Plato
+          </UButton>
         </div>
 
       </form>

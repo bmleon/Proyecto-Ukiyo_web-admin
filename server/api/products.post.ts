@@ -1,43 +1,43 @@
 export default defineEventHandler(async (event) => {
-  // 1. Leemos los datos que nos envía el formulario (Vue)
   const body = await readBody(event)
-  
-  // 2. Obtenemos la URL del Gateway desde la configuración
   const config = useRuntimeConfig()
-  // Si no está definida la variable, usamos la IP por defecto
-  const gatewayBase = config.public.apiBase || 'http://194.163.170.169:3000'
   
-  // Asumimos que el endpoint en el Gateway es '/productos'
-  const targetUrl = `${gatewayBase}/productos`
+  // Usamos el puerto 30090
+  const gatewayBase = config.public.apiBase || 'http://194.163.170.169:30090'
+  
+  // Ruta en español (la que te dio error 400, lo que significa que la ruta existe)
+  const targetUrl = `${gatewayBase}/api/productos`
 
   try {
-    console.log('📤 Enviando nuevo plato al Gateway:', targetUrl)
-    console.log('📦 Datos:', body)
+    // PREPARAR DATOS LIMPIOS (Payload)
+    // Solo enviamos lo que funcionó en Postman. Nada más.
+    const payload = {
+      nombre: body.name,
+      descripcion: body.description,
+      precio: Number(body.price), // Nos aseguramos que sea un número
+      disponible: true            // Forzamos a true
+    }
 
-    // 3. Hacemos la petición POST al Gateway
-    // Mapeamos los campos por si el backend los espera en español
+    console.log('📤 Enviando a:', targetUrl)
+    console.log('📦 Datos limpios:', payload)
+
     const response = await $fetch(targetUrl, {
       method: 'POST',
-      body: {
-        nombre: body.name,
-        descripcion: body.description,
-        precio: Number(body.price), // Aseguramos que sea número
-        categoria: body.category,
-        imagen: body.image,
-        activo: body.active ?? true
-      }
+      body: payload
     })
 
-    // 4. Devolvemos la respuesta del Gateway al frontend
     return response
 
   } catch (error: any) {
-    console.error('❌ Error al conectar con el Gateway:', error.message)
+    // SI FALLA, MOSTRAMOS EL ERROR DETALLADO DEL BACKEND
+    // El backend suele devolver un mensaje explicando qué campo falla
+    console.error('❌ El Gateway rechazó los datos:', error.data)
     
-    // Si falla, lanzamos un error 500 para que la web lo sepa
+    const mensajeBackend = error.data?.message || error.message;
+
     throw createError({
       statusCode: error.response?.status || 500,
-      statusMessage: error.message || 'Error de conexión con el servidor de productos',
+      statusMessage: `Rechazado por Backend: ${Array.isArray(mensajeBackend) ? mensajeBackend.join(', ') : mensajeBackend}`,
       data: error.data
     })
   }
