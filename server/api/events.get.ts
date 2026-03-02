@@ -1,6 +1,6 @@
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
-  const gatewayUrl = config.public.apiBase || 'http://194.163.170.169:3000'
+  const gatewayUrl = config.public.apiBase || 'http://ukiyocazorla.es'
 
   try {
     console.log(`🔌 Conectando Eventos a: ${gatewayUrl}/api/eventos`)

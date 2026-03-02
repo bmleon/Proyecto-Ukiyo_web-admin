@@ -3,7 +3,7 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   
   // Usamos el puerto 30090
-  const gatewayBase = config.public.apiBase || 'http://194.163.170.169:3000'
+  const gatewayBase = config.public.apiBase || 'http://ukiyocazorla.es'
   
   // Ruta en español (la que te dio error 400, lo que significa que la ruta existe)
   const targetUrl = `${gatewayBase}/api/productos`
