@@ -1,48 +1,43 @@
 pipeline {
-    agent {
-        kubernetes {
-            yaml '''
-            apiVersion: v1
-            kind: Pod
-            spec:
-              containers:
-              - name: kaniko
-                image: gcr.io/kaniko-project/executor:debug
-                command:
-                - sleep
-                args:
-                - 9999999
-              - name: kubectl
-                image: bitnami/kubectl:latest
-                command:
-                - sleep
-                args:
-                - 9999999
-            '''
-        }
-    }
+    agent any
 
     environment {
-        // Tus datos de Docker Hub
-        DOCKER_USER = 'bmleon'
-        IMAGE_NAME = 'ukiyo-admin'
+        // Definimos la imagen para no repetir código
+        DOCKER_IMAGE = "bmleon/miportfolio:latest"
+        DOCKER_FILE  = "Docker/proyectos/mi_Portfolio/deploy/Dockerfile"
     }
 
     stages {
-        stage('Construir y Subir a Docker Hub (Kaniko)') {
+        stage('Limpiar Espacio') {
             steps {
-                // Entramos al minitrabajador de Kaniko
-                container('kaniko') {
-                    // Usamos la credencial que guardaste en Jenkins
-                    withCredentials([usernamePassword(credentialsId: 'docker-hub-creds', passwordVariable: 'DOCKER_PASS', usernameVariable: 'DOCKER_USER_VAR')]) {
-                        sh '''
-                        echo "Configurando credenciales de Docker Hub para Kaniko..."
-                        mkdir -p /kaniko/.docker
-                        echo "{\\"auths\\":{\\"https://index.docker.io/v1/\\":{\\"username\\":\\"${DOCKER_USER_VAR}\\",\\"password\\":\\"${DOCKER_PASS}\\"}}}" > /kaniko/.docker/config.json
+                script {
+                    echo "Limpiando imágenes antiguas para ahorrar espacio..."
+                    // El 'true' evita que el pipeline falle si no hay nada que limpiar
+                    sh "docker system prune -f || true"
+                }
+            }
+        }
 
-                        echo "Kaniko está construyendo y subiendo la imagen..."
-                        /kaniko/executor --context `pwd` --dockerfile `pwd`/Dockerfile --destination ${DOCKER_USER}/${IMAGE_NAME}:latest
-                        '''
+        stage('Construir Imagen') {
+            steps {
+                script {
+                    echo "Construyendo la imagen: ${DOCKER_IMAGE}"
+                    // Usamos el punto (.) al final para indicar el contexto actual
+                    sh "docker build -t ${DOCKER_IMAGE} -f ${DOCKER_FILE} ."
+                }
+            }
+        }
+
+        stage('Subir a Docker Hub') {
+            steps {
+                script {
+                    echo "Iniciando sesión en Docker Hub..."
+                    // Requiere que hayas creado la credencial 'docker-hub-credentials' en Jenkins
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', 
+                                                    passwordVariable: 'DOCKER_HUB_PASSWORD', 
+                                                    usernameVariable: 'DOCKER_HUB_USER')]) {
+                        sh "echo \$DOCKER_HUB_PASSWORD | docker login -u \$DOCKER_HUB_USER --password-stdin"
+                        sh "docker push ${DOCKER_IMAGE}"
                     }
                 }
             }
@@ -50,13 +45,21 @@ pipeline {
 
         stage('Desplegar en Kubernetes') {
             steps {
-                // Entramos al minitrabajador de Kubectl
-                container('kubectl') {
-                    echo 'Avisando a Kubernetes para actualizar la web...'
-                    // Ojo: Asegúrate de que tu deployment en Kubernetes se llama así
-                    sh 'kubectl rollout restart deployment ukiyo-admin'
+                script {
+                    echo "Actualizando el despliegue en el clúster..."
+                    // Forzamos el reinicio del pod para que tome la nueva imagen
+                    sh "microk8s kubectl rollout restart deployment ukiyo-admin -n default"
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo "¡Éxito! El portfolio se ha desplegado correctamente."
+        }
+        failure {
+            echo "Algo ha fallado. Revisa los logs de la consola superiores."
         }
     }
 }
