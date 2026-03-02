@@ -1,6 +1,6 @@
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
-  const gatewayUrl = config.public.apiBase || 'http://194.163.170.169:30090'
+  const gatewayUrl = config.public.apiBase || 'http://194.163.170.169:3000'
 
   try {
     console.log(`🔌 Conectando Inventario a: ${gatewayUrl}/api/inventario`)

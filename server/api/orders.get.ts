@@ -1,7 +1,7 @@
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   // Usamos la IP pública del Gateway o la de defecto
-  const gatewayUrl = config.public.apiBase || 'http://194.163.170.169:30090'
+  const gatewayUrl = config.public.apiBase || 'http://194.163.170.169:3000'
 
   try {
     console.log(`🔌 Conectando Pedidos a: ${gatewayUrl}/api/pedidos`)

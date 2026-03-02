@@ -2,7 +2,7 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event)
   const config = useRuntimeConfig()
   
-  const gatewayUrl = config.public.apiBase || 'http://194.163.170.169:30090'
+  const gatewayUrl = config.public.apiBase || 'http://194.163.170.169:3000'
 
   // ID del pedido que queremos actualizar
   // Si tu frontend envía el ID dentro del body, lo sacamos de ahí.
