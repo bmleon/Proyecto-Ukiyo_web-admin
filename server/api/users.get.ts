@@ -1,7 +1,6 @@
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
   
-  // CORRECCIÓN: Actualizamos el fallback a 30090
   const gatewayUrl = config.public.apiBase || 'http://194.163.170.169:3000'
 
   try {
@@ -23,11 +22,15 @@ export default defineEventHandler(async (event) => {
     }))
 
   } catch (error: any) {
-    console.error(`❌ Error Gateway Usuarios:`, error.message)
-    // Devolvemos demo si falla
-    return [
-      { id: 1, name: 'Yamila (Demo)', email: 'admin@ukiyo.rest', role: 'ADMIN', created_at: new Date().toISOString() },
-      { id: 2, name: 'Juan (Staff)', email: 'staff@ukiyo.rest', role: 'STAFF', created_at: new Date().toISOString() }
-    ]
+    // Imprimimos el error completo en la consola de tu servidor (PowerShell)
+    console.error(`❌ Error Gateway Usuarios:`, error)
+    
+    // Lanzamos un error HTTP real hacia el navegador
+    throw createError({
+      statusCode: error.response?.status || 500,
+      statusMessage: error.message || 'Fallo de conexión con el API Gateway',
+      // Si el servidor de tu compañero llega a devolver un JSON con un mensaje de error, lo pasamos aquí
+      data: error.data || null 
+    })
   }
 })
